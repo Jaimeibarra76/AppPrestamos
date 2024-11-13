@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Ver Préstamos</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Préstamos</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Clientes
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="{{ url_for('auth.home') }}">Ver Clientes</a>
+                        <a class="dropdown-item" href="{{ url_for('auth.add_cliente') }}">Agregar Cliente</a>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="prestamosDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Préstamos
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="prestamosDropdown">
+                        <a class="dropdown-item" href="{{ url_for('prestamos.ver_prestamos') }}">Ver Préstamos</a>
+                        <a class="dropdown-item" href="{{ url_for('prestamos.agregar_prestamo') }}">Agregar Préstamo</a>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Semanas
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="{{ url_for('prestamos.catalogo_semanas') }}">Catálogo de Semanas</a>
+                    </div>
+                </li>
+            </ul>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('auth.logout') }}">Cerrar Sesión</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-2 col-lg-12 col-md-12 col-12">
+
+        <div class="d-flex justify-content-between">
+            <h2>Lista de Préstamos</h2>
+            <a  class="btn btn-success mt-3 ml-auto" href="{{ url_for('prestamos.agregar_prestamo') }}" title="Agregar Prestamo"><i class="fas fa-plus"> </i></a>
+        </div>
+        
+        <div class="mb-3 lefc mt-2">
+            <input type="text" id="buscador" class="form-control" placeholder="Buscar por cliente...">
+        </div>
+        
+        <div class="table-responsive able-responsive-sm">
+            <table class="table table-bordered table-striped" >
+                <thead class="thead-light">
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Monto</th>
+                        <th>Total Multas</th>
+                        <th>Total General</th>
+                        <th>Total Pagado</th>
+                        <th>Multas Generadas</th>
+                        <th>Semanas</th>
+                        <th>Semanas Pagadas</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="prestamos-table">
+                    {% for prestamo in prestamos %}
+                    <tr>
+                        <td class="h-1">{{ prestamo.cliente }}</td>
+                        <td class="h-20">${{ '{:,.2f}'.format(prestamo.monto) }}</td>
+                        <td class="h-20">${{ '{:,.2f}'.format(prestamo.TotalMulta) }}</td>
+                        <td class="h-20">${{ '{:,.2f}'.format(prestamo.montoCMulta) }}</td>
+                        <td class="h-20">${{ '{:,.2f}'.format(prestamo.totalPagado) }}</td>
+                        <td class="h-20">{{ prestamo.CMulta }}</td>
+                        <td class="h-20">{{ prestamo.semanas }}</td>
+                        <td class="h-20">{{ prestamo.SemanasPagadas }}</td>
+                        <td class=""> <a  class="btn {% if prestamo.estado =='Pagado' %}btn-success text-white{% else %}btn-primary text-white{% endif %}">{{ prestamo.estado }}</a></td>
+                        <td>
+                            <a href="{{ url_for('prestamos.ver_movimientos', prestamo_id=prestamo.id) }}" class="btn btn-info" title="Ver Movimientos"><i class="fas fa-eye"></i></a>
+                            <a href="{{ url_for('prestamos.eliminar_prestamo', prestamo_id=prestamo.id) }}" class="btn btn-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
+                            
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Función para filtrar la tabla de préstamos
+        document.getElementById('buscador').addEventListener('keyup', function() {
+            let input = this.value.toLowerCase();
+            let rows = document.querySelectorAll('#prestamos-table tr');
+            rows.forEach(row => {
+                let cliente = row.cells[0].textContent.toLowerCase();
+                if (cliente.indexOf(input) > -1) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        window.onpageshow = function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        };
+
+    </script>
+
+
+</body>
+</html>

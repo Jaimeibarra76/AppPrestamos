@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movimientos de Préstamo</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <!-- Menú Superior -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Préstamos</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Clientes
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="{{ url_for('auth.home') }}">Ver Clientes</a>
+                        <a class="dropdown-item" href="{{ url_for('auth.add_cliente') }}">Agregar Cliente</a>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="prestamosDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Préstamos
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="prestamosDropdown">
+                        <a class="dropdown-item" href="{{ url_for('prestamos.ver_prestamos') }}">Ver Préstamos</a>
+                        <a class="dropdown-item" href="{{ url_for('prestamos.agregar_prestamo') }}">Agregar Préstamo</a>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Semanas
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="{{ url_for('prestamos.catalogo_semanas') }}">Catálogo de Semanas</a>
+                    </div>
+                </li>
+            </ul>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('auth.logout') }}">Cerrar Sesión</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+
+    <!-- Contenido Principal -->
+    <div class="container mt-5">
+        <h2 class="mb-4">Movimientos del Préstamo</h2>
+        <div class="card mb-4">
+            <div class="card-body">
+                <p><strong>Total Prestamo:</strong> ${{ Cantidad}}</p>
+                <p><strong>Total Prestamo con Multas:</strong> ${{ cantidadCmulta}}</p>
+                <p><strong>Semanas Totales:</strong> {{ Semanas }}</p>
+                <p><strong>Fecha Inicio:</strong> {{ fecha_inicio }}</p>
+                <p><strong>Fecha Termino:</strong> {{ fecha_termino }}</p>
+                {% if estado != 'Pagado'%}
+                    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#agregarPagoModal">
+                        Agregar Nuevo Pago
+                    </button>
+                {%endif%}
+            </div>
+        </div>
+        <div class="table-responsive able-responsive-sm">
+            <table class="table table-bordered table-striped">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Semana</th>
+                        <th>Pago</th>
+                        <th>Multa</th>
+                        <th>Pago con Multa</th>
+                        <th>Saldo prestamo</th>
+                        <th>Saldo Con multa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if movimientos %}
+                        {% for movimiento in movimientos %}
+                        <tr>
+                            <td >{{ movimiento.semana }}</td>
+                            <td >${{ '{:,.2f}'.format(movimiento.monto) }}</td>
+                            <td class="{% if not bitMulta %}bg-danger text-white{% endif %}">${{ '{:,.2f}'.format(movimiento.multa) }}</td>
+                            <td >${{ '{:,.2f}'.format(movimiento.montoCmulta) }}</td>
+                            <td >${{ '{:,.2f}'.format(movimiento.totalPen) }}</td>
+                            <td >${{ '{:,.2f}'.format(movimiento.totalCMulta) }}</td>
+                            
+                            
+                            
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No hay movimientos registrados para este préstamo.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                
+                
+                
+            </table>
+        </div>
+        
+        
+    </div>
+
+    <!-- Modal para Agregar Pago -->
+    <div class="modal fade" id="agregarPagoModal" tabindex="-1" role="dialog" aria-labelledby="agregarPagoModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="agregarPagoModalLabel">Agregar Nuevo Pago</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{{ url_for('prestamos.agregar_pago', prestamo_id=prestamo_id) }}">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="monto">Monto a Pagar</label>
+                            <input type="number" class="form-control" id="monto" name="monto" step="0.01" required>
+                        </div>
+                        {% if not es_lunes %}
+                            <div class="mb-3">
+                                <label for="multa" class="form-label">Multa por no pagar en lunes : ${{multa_semanas}}</label>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Registrar Pago</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de Bootstrap y jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
