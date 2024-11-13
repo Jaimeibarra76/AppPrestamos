@@ -3,7 +3,7 @@ services:
     name: appPrestamos
     env: python
     plan: free
-    region: us-central
+    region: oregon  
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn nombre_de_tu_app:app"  # O el comando que inicie tu app
     envVars:
