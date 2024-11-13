@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: appPrestamos
+    env: python
+    plan: free
+    region: us-central
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn nombre_de_tu_app:app"  # O el comando que inicie tu app
+    envVars:
+      - key: SECRET_KEY
+        value: tu_clave_secreta
+      - key: OTRO_ENV_VAR
+        value: valor
