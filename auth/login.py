@@ -99,7 +99,7 @@ def edit_cliente(cliente_id):
 def logout():
     session.pop('user', None)  # Elimina el usuario de la sesión
     flash('Has cerrado sesión exitosamente', 'success')
-    return redirect(url_for('auth.login'))  # Redirige a la página de inicio de sesión
+    return redirect(url_for('auth.login_view'))  # Redirige a la página de inicio de sesión
 
 
 @auth_bp.route('/eliminar_cliente/<cliente_id>', methods=['GET'])
