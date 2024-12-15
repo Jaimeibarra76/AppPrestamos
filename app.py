@@ -1,6 +1,7 @@
 from flask import Flask
 from auth.login import auth_bp 
-from auth.prestamos import prestamos_bp  # Importa el blueprint del módulo de autenticación
+from auth.prestamos import prestamos_bp
+import os  # Importa el blueprint del módulo de autenticación
 
 def create_app():
     app = Flask(__name__)
@@ -14,4 +15,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
