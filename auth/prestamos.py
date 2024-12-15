@@ -37,12 +37,17 @@ def ver_prestamos():
                     
                     if movimiento_data.get('prestamo_id') == prestamo_id: 
                         semanasPagadas = semanasPagadas +1 
-                        totalPagado = totalPagado + float(movimiento_data.get('monto',0)) - multa_semanas# Filtrar por prestamo_id
+
+                        # Filtrar por prestamo_id
                         if movimiento_data.get('BitMulta') == True:  # Filtrar por prestamo_id
                             movimiento.append({
                                 'id': movimiento_id
                             })
+
                             totalMultas = totalMultas + multa_semanas
+                            totalPagado = totalPagado + float(movimiento_data.get('monto',0)) - multa_semanas
+                        else:
+                            totalPagado = totalPagado + float(movimiento_data.get('monto',0)) 
                             
             
              # Asegúrate de que 'cliente_id' coincide con la clave en tu estructura de datos
@@ -55,6 +60,7 @@ def ver_prestamos():
                 'estado': prestamo_data.get('estado', 'Desconocido'),
                 'CMulta': len(movimiento),
                 'TotalMulta': totalMultas,
+
                 'SemanasPagadas':semanasPagadas,
                 "totalPagado":totalPagado
             })
@@ -69,13 +75,15 @@ def agregar_prestamo():
         cliente_id = request.form['cliente_id']
         semanas_id = request.form['semanas']
         monto = float(request.form['monto'])
+        pago = float(request.form['pago'])
+        fecha = request.form['fecha']
 
         # Obtener la cantidad de semanas desde el catálogo de semanas usando semanas_id
         catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
         cantidad_semanas = catalogo_semanas['semanas'] if catalogo_semanas else 0
-
+        fecha_str = datetime.strptime(fecha, '%Y-%m-%d').date()
         # Fecha de inicio (fecha actual)
-        fecha_inicio = datetime.now()
+        fecha_inicio = fecha_str
         
         # Calcular la fecha de término sumando la cantidad de semanas a la fecha de inicio
         fecha_termino = fecha_inicio + timedelta(weeks=int(cantidad_semanas))
@@ -85,6 +93,7 @@ def agregar_prestamo():
             'cliente_id': cliente_id,
             'semanas_id': semanas_id,
             'monto': monto,
+            'pagoxSemana': pago,
             'montoCMulta': monto,
             'estado': 'Activo',
             'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d'),  # Guardar como string
@@ -144,7 +153,8 @@ def ver_prestamos_cliente(cliente_id):
                     'CMulta': len(movimiento),
                     'TotalMulta': totalMultas,
                     'SemanasPagadas':semanasPagadas,
-                    "totalPagado":totalPagado
+                    "totalPagado":totalPagado,
+                    
                 })
 
     return render_template('ver_prestamos_cliente.html', prestamos=prestamos, cliente_id=cliente_id, nombreCliente = cliente_nombre)
@@ -158,12 +168,15 @@ def ver_movimientos(prestamo_id):
 
     # Guardar semanas y cantidad en variables con valores predeterminados si no existen
     cantidad = float(prestamo_data.get('monto'))
+    cantidadPagar = float(prestamo_data.get('monto')) * float(prestamo_data.get('pagoxSemana'))
     cantidadCmulta = float(prestamo_data.get('montoCMulta'))
     semanas_id = prestamo_data.get('semanas_id', 0)
+    pagoxSemana = float(prestamo_data.get('pagoxSemana', 0))
     estado = prestamo_data.get('estado','Desconocido')
     catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
     cantidad_semanas = catalogo_semanas['semanas'] if catalogo_semanas else 0
     multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
+    cantidadPagar = pagoxSemana * cantidad_semanas
 
     fecha_inicio_obj = datetime.strptime(prestamo_data['fecha_inicio'], '%Y-%m-%d')
     fecha_termino_obj = datetime.strptime(prestamo_data['fecha_termino'], '%Y-%m-%d')
@@ -186,7 +199,7 @@ def ver_movimientos(prestamo_id):
     
 
     print(f"Buscando movimientos para prestamo_id: {prestamo_id}")  # Mensaje de depuración
-    totalPen = float(prestamo_data.get('monto'))
+    totalPen = cantidadPagar ##float(prestamo_data.get('monto'))
     TotalPMulta = float(prestamo_data.get('monto'))
 
     if movimientos_ref:
@@ -195,10 +208,12 @@ def ver_movimientos(prestamo_id):
             print(f"Movimiento encontrado: {movimiento_data}")
             aplicaMulta = 0  # Mostrar datos del movimiento
             
-            if movimiento_data.get('BitMulta') == True:
-                aplicaMulta = multa_semanas
-                multaTotal = multaTotal + multa_semanas
+
             if movimiento_data.get('prestamo_id') == prestamo_id: 
+                if movimiento_data.get('BitMulta') == True:
+                    aplicaMulta = multa_semanas
+                    multaTotal = multaTotal + multa_semanas
+                    print(f'MULTAAAAAA{multaTotal}')
                 totalCMulta = TotalPMulta + multaTotal
                 totalPen =  totalPen - float(movimiento_data.get('monto', 0)) + aplicaMulta
                   # Filtrar por prestamo_id
@@ -210,14 +225,14 @@ def ver_movimientos(prestamo_id):
                     'totalPen': totalPen,
                     'totalCMulta': float(totalCMulta),
                     'semana': movimiento_data.get('semana', 0),
-                    'bitMulta' :movimiento_data.get('BitMulta') 
+                    'BitMulta' : bool(movimiento_data.get('BitMulta')) 
                 })
 
     print(f"Movimientos encontrados: {movimientos,}")  # Mostrar movimientos encontrados
 
     return render_template('ver_movimientos.html', movimientos=movimientos, prestamo_id=prestamo_id, prestamo=prestamo_ref, Cantidad = cantidad, 
                            Semanas=cantidad_semanas,es_lunes= es_lunes, fecha_inicio = fecha_inicio_formateada, fecha_termino = fecha_termino_formateada,
-                           multa_semanas=multa_semanas,cantidadCmulta = cantidadCmulta, estado= estado)
+                           multa_semanas=multa_semanas,cantidadCmulta = cantidadCmulta, estado= estado, PagoxSemana=pagoxSemana, CantidadPagar=cantidadPagar )
 
 @prestamos_bp.route('/agregar_pago/<prestamo_id>', methods=['GET', 'POST'])
 def agregar_pago(prestamo_id):
@@ -227,11 +242,13 @@ def agregar_pago(prestamo_id):
         prestamo_ref = db.reference(f'prestamos/{prestamo_id}')
         prestamo_data = prestamo_ref.get() or {}
         semanas_id = prestamo_data.get('semanas_id', 0)
-        montoPrestamo = float(prestamo_data.get('monto', 0))
-
+         #float(prestamo_data.get('monto', 0))
+        pagoxSemana = float(prestamo_data.get('pagoxSemana', 0))
+        aplicarMulta = request.form.get('aplicar_Multa')
         catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
         multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
         semanas = int(catalogo_semanas['semanas'])
+        montoPrestamo =  pagoxSemana * semanas
         movimientos = [] 
         movimientosMulta = []
         sumaPagado=0 # Lista para almacenar los movimientos del préstamo específico
@@ -242,33 +259,53 @@ def agregar_pago(prestamo_id):
                     movimientos.append({
                         'id': movimiento_id
                     })
-                    sumaPagado =  sumaPagado + float(movimiento_data.get('monto',0)) - multa_semanas
+                    if(aplicarMulta =='Aplica'):
+                        sumaPagado =  sumaPagado + float(movimiento_data.get('monto',0)) - multa_semanas
+                    else:
+                       sumaPagado =  sumaPagado + float(movimiento_data.get('monto',0)) 
                 # if movimiento_data.get('BitMulta') == True:  # Filtrar por prestamo_id
                 #     movimientosMulta.append({
                 #         'id': movimiento_id
                 #     })
-        monto = request.form.get('monto')
+        monto = pagoxSemana
+        
         if prestamo_data:
-            montoCMulta = float(prestamo_data.get('montoCMulta',0)) + multa_semanas
-            prestamo_ref.update({
-                'montoCMulta' : montoCMulta
-            })
+            if(aplicarMulta =='Aplica'):
+                montoCMulta = float(prestamo_data.get('montoCMulta',0)) + multa_semanas
+                prestamo_ref.update({
+                    'montoCMulta' : montoCMulta
+                })
         # Obtener la cantidad de movimientos registrados
         cantidad_movimientos = len(movimientos)
         # cantidad_Multa = len(movimientosMulta)>0 if True else False 
 
-       
+
         semana = cantidad_movimientos + 1
         montoCMulta = float(monto) + multa_semanas   
-        sumaPagado = sumaPagado + float(monto)   
+        sumaPagado2 = sumaPagado + float(monto)   
+
         monto2= 0
         if(es_lunes):
             monto2 = monto
         else :
-            monto2 = montoCMulta
-        bitMulta = es_lunes if False else True
+            if(aplicarMulta =='Aplica'):
+                monto2 = montoCMulta
+            else:
+                monto2=monto
+
+        print(f'MONTOOOOOOOOOOOOOO{monto2}')
+        bitMulta = False
+        if(es_lunes):
+            bitMulta = False
+        else:
+            if(aplicarMulta =='Aplica'):
+                bitMulta = True
+            else:
+                bitMulta = False
         # Guardar el nuevo movimiento en Firebase
-        if(sumaPagado == montoPrestamo):
+        print(f'SUMA PAGADO--------------------{sumaPagado2}')
+        print(f'MONTO PRESTAMO--------------------{montoPrestamo}')
+        if(sumaPagado2 == montoPrestamo):
             if prestamo_data:
                     prestamo_ref.update({
                         'estado' : 'Pagado'
@@ -335,3 +372,19 @@ def eliminar_prestamo(prestamo_id):
         flash(f'Error al eliminar el cliente: {str(e)}', 'danger')
     
     return redirect(url_for('prestamos.ver_prestamos'))
+
+@prestamos_bp.route('/eliminar_movimiento/<movimiento_id>,<prestamo_id>', methods=['GET'])
+def eliminar_movimiento(movimiento_id, prestamo_id):
+    # Eliminar el cliente con el ID proporcionado
+    try:
+        # Obtener la referencia al cliente específico en la base de datos
+        prestamos_ref = db.reference(f'movimientos/{movimiento_id}')
+        
+        # Eliminar el cliente de la base de datos
+        prestamos_ref.delete()
+        
+
+    except Exception as e:
+        flash(f'Error al eliminar el cliente: {str(e)}', 'danger')
+    
+    return redirect(url_for('prestamos.ver_movimientos', prestamo_id=prestamo_id))

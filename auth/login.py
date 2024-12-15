@@ -20,7 +20,9 @@ def login_view():
             # Intenta iniciar sesión con el email y la contraseña
             user = auth.get_user_by_email(email)
             session['user_id'] = user.uid 
+            
             # Aquí deberías manejar la verificación de la contraseña
+            print(f'user------{user.uid}')
             # Firebase no permite verificar la contraseña directamente
             flash('Inicio de sesión exitoso', 'success')
             return redirect(url_for('auth.home'))  # Redirige a la página de inicio
@@ -97,7 +99,8 @@ def edit_cliente(cliente_id):
 
 @auth_bp.route('/logout')
 def logout():
-    session.pop('user', None)  # Elimina el usuario de la sesión
+    session.pop('user', None)
+    session.clear()  # Elimina el usuario de la sesión
     flash('Has cerrado sesión exitosamente', 'success')
     return redirect(url_for('auth.login_view'))  # Redirige a la página de inicio de sesión
 
@@ -117,3 +120,63 @@ def eliminar_cliente(cliente_id):
         flash(f'Error al eliminar el cliente: {str(e)}', 'danger')
     
     return redirect(url_for('auth.home'))
+
+
+@auth_bp.route('/historial_cliente')
+def historial_cliente():
+    id_asesor = session.get('user_id')
+    prestamos_ref = db.reference('prestamos').get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    clientes_ref = db.reference('clientes').get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    movimientos_ref = db.reference('movimientos').get()
+    if not id_asesor:
+        return redirect(url_for('auth.login_view')) 
+    prestamos = []
+    total = []
+    sumaGeneralC = 0
+    sumaGeneralI = 0
+    numero =0
+    if clientes_ref:
+        for cliente_id, cliente_data in clientes_ref.items():
+            cliente_ref = db.reference('clientes').child(cliente_id).get()
+            cliente_nombre = cliente_ref.get('nombre')
+            if prestamos_ref:
+                for prestamo_id, prestamo_data in prestamos_ref.items():
+                    totalPagado =0
+                    if movimientos_ref:
+                        for movimiento_id, movimiento_data in movimientos_ref.items():
+                             if movimiento_data.get('prestamo_id') == prestamo_id: 
+                                 totalPagado = totalPagado + float(movimiento_data.get('monto',0))
+                    semanas_id = prestamo_data.get('semanas_id', 0)
+                    catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
+                    multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
+                    semanas = (catalogo_semanas['semanas'] if catalogo_semanas else 0)
+                    totalPrestamo =  float(prestamo_data.get('monto'))
+                    totalPagar =  semanas * float(prestamo_data.get('pagoxSemana')) - totalPagado
+                    if prestamo_data.get('cliente_id') == cliente_id:
+                        sumaGeneralC = totalPrestamo + sumaGeneralC
+                        sumaGeneralI = totalPagar + sumaGeneralI 
+                        numero = numero +1
+                        print(f'SUMAGENERAC ----------------{sumaGeneralC}')
+                        if prestamo_data.get('cliente_id') == cliente_id:  # Filtrar por el cliente_id
+                            prestamos.append({
+                                'id': prestamo_id,
+                                'cliente': cliente_nombre,
+                                "totalPrestamo":totalPrestamo,
+                                "totalPagar":totalPagar,
+                                "semanas":semanas,
+                                'numero':numero
+                            })
+                        # Redirige si no hay sesión iniciada
+
+        total.append({
+            'Id':0,
+            'cliente':'Total',
+            'totalPrestamo':sumaGeneralC,
+            'totalPagar':sumaGeneralI,
+            'semanas': 0,
+        })
+
+        print(f'Totales---------------{total}')
+
+    clientes = obtener_clientes(id_asesor)  # Obtiene la lista de clientes
+    return render_template('historial_cliente.html', clientes=clientes, prestamos = prestamos, totales = total)

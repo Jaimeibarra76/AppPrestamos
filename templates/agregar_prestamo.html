@@ -25,6 +25,7 @@
                     </a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                         <a class="dropdown-item" href="{{ url_for('auth.home') }}">Ver Clientes</a>
+                        <a class="dropdown-item" href="{{ url_for('auth.historial_cliente') }}">Historial Clientes</a>
                         <a class="dropdown-item" href="{{ url_for('auth.add_cliente') }}">Agregar Cliente</a>
                     </div>
                 </li>
@@ -79,6 +80,14 @@
                 <label for="monto">Monto a Prestar</label>
                 <input type="number" class="form-control" id="monto" name="monto" placeholder="Ingrese el monto" required>
             </div>
+            <div class="form-group">
+                <label for="monto">Pago por semana</label>
+                <input type="number" class="form-control" id="pago" name="pago" placeholder="Ingrese el pago" required>
+            </div>
+            <div class="form-group">
+                <label for="fecha" class="form-label">Selecciona una Fecha</label>
+                <input type="date" id="fecha" name="fecha" class="form-control">
+            </div>
             <button type="submit" class="btn btn-primary">Agregar Préstamo</button>
             <a href="{{ url_for('prestamos.ver_prestamos') }}" class="btn btn-secondary">Cancelar</a>
         </form>
@@ -89,6 +98,16 @@
                 window.location.reload();
             }
         };
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const inputFecha = document.getElementById("fecha");
+            const hoy = new Date();
+            const año = hoy.getFullYear();
+            const mes = String(hoy.getMonth() + 1).padStart(2, '0'); // Los meses van de 0 a 11
+            const dia = String(hoy.getDate()).padStart(2, '0'); // Día del mes
+
+            inputFecha.value = `${año}-${mes}-${dia}`; // Formato YYYY-MM-DD
+        });
     </script>
 </body>
 </html>

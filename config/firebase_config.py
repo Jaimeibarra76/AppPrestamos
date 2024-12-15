@@ -1,8 +1,21 @@
 import firebase_admin
 from firebase_admin import credentials, db
 from models.cliente import Cliente 
+import os
+import json
 
-cred = credentials.Certificate("firebase_credentials.json")
+firebase_config = os.getenv('FIREBASE_CONFIG')
+
+if not firebase_config:
+    raise ValueError("La variable de entorno FIREBASE_CONFIG no está configurada.")
+
+# Convertir el contenido JSON en un diccionario
+firebase_config_dict = json.loads(firebase_config)
+
+# Inicializar Firebase con las credenciales
+cred = credentials.Certificate(firebase_config_dict)
+
+#cred = credentials.Certificate("firebase_credentials.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://prestamos-c2d1c-default-rtdb.firebaseio.com/'  # Reemplaza esto con la URL de tu base de datos
 })
