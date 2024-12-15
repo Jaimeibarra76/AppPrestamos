@@ -1,6 +1,5 @@
 import firebase_admin
 from firebase_admin import credentials, db
-from models.cliente import Cliente 
 import os
 import json
 

@@ -2,7 +2,6 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 import firebase_admin
 from firebase_admin import credentials, auth
 from config.firebase_config import obtener_clientes  # Asegúrate de importar la función
-from models.cliente import Cliente 
 from config.firebase_config import agregar_cliente,db  # Importa la función aquí  # Asegúrate de que esto esté al principio del archivo
 
 

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from firebase_admin import db
-from models.cliente import Cliente 
+
 from datetime import datetime, timedelta
 import locale
 
