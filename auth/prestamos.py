@@ -161,7 +161,12 @@ def ver_prestamos_cliente(cliente_id):
 
 @prestamos_bp.route('/ver_movimientos/<prestamo_id>')
 def ver_movimientos(prestamo_id):
-    locale.setlocale(locale.LC_TIME, 'es_ES.utf8') 
+    try:
+        locale.setlocale(locale.LC_TIME, 'es_US.UTF-8')  # Intenta usar español de EE.UU.
+    except locale.Error:
+        print("Locale no soportado, configurando a 'C'")
+        locale.setlocale(locale.LC_TIME, 'C') 
+    #locale.setlocale(locale.LC_TIME, 'es_ES.utf8') 
      # Obtener los datos del préstamo específico
     prestamo_ref = db.reference(f'prestamos/{prestamo_id}')
     prestamo_data = prestamo_ref.get() or {}
