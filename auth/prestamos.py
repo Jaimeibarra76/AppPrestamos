@@ -164,7 +164,7 @@ def ver_movimientos(prestamo_id):
     try:
         locale.setlocale(locale.LC_TIME, 'es_US.UTF-8')  # Intenta usar español de EE.UU.
     except locale.Error:
-        print("Locale no soportado, configurando a 'C'")
+        
         locale.setlocale(locale.LC_TIME, 'C') 
     #locale.setlocale(locale.LC_TIME, 'es_ES.utf8') 
      # Obtener los datos del préstamo específico
@@ -203,14 +203,14 @@ def ver_movimientos(prestamo_id):
     
     
 
-    print(f"Buscando movimientos para prestamo_id: {prestamo_id}")  # Mensaje de depuración
+    # Mensaje de depuración
     totalPen = cantidadPagar ##float(prestamo_data.get('monto'))
     TotalPMulta = float(prestamo_data.get('monto'))
 
     if movimientos_ref:
         multaTotal = 0
         for movimiento_id, movimiento_data in movimientos_ref.items():
-            print(f"Movimiento encontrado: {movimiento_data}")
+            
             aplicaMulta = 0  # Mostrar datos del movimiento
             
 
@@ -218,7 +218,6 @@ def ver_movimientos(prestamo_id):
                 if movimiento_data.get('BitMulta') == True:
                     aplicaMulta = multa_semanas
                     multaTotal = multaTotal + multa_semanas
-                    print(f'MULTAAAAAA{multaTotal}')
                 totalCMulta = TotalPMulta + multaTotal
                 totalPen =  totalPen - float(movimiento_data.get('monto', 0)) + aplicaMulta
                   # Filtrar por prestamo_id
@@ -233,7 +232,7 @@ def ver_movimientos(prestamo_id):
                     'BitMulta' : bool(movimiento_data.get('BitMulta')) 
                 })
 
-    print(f"Movimientos encontrados: {movimientos,}")  # Mostrar movimientos encontrados
+ # Mostrar movimientos encontrados
 
     return render_template('ver_movimientos.html', movimientos=movimientos, prestamo_id=prestamo_id, prestamo=prestamo_ref, Cantidad = cantidad, 
                            Semanas=cantidad_semanas,es_lunes= es_lunes, fecha_inicio = fecha_inicio_formateada, fecha_termino = fecha_termino_formateada,
@@ -298,7 +297,7 @@ def agregar_pago(prestamo_id):
             else:
                 monto2=monto
 
-        print(f'MONTOOOOOOOOOOOOOO{monto2}')
+
         bitMulta = False
         if(es_lunes):
             bitMulta = False
@@ -308,8 +307,7 @@ def agregar_pago(prestamo_id):
             else:
                 bitMulta = False
         # Guardar el nuevo movimiento en Firebase
-        print(f'SUMA PAGADO--------------------{sumaPagado2}')
-        print(f'MONTO PRESTAMO--------------------{montoPrestamo}')
+
         if(sumaPagado2 == montoPrestamo):
             if prestamo_data:
                     prestamo_ref.update({

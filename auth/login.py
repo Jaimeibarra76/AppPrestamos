@@ -47,13 +47,69 @@ def register():
     return render_template('register.html')
 
 
-@auth_bp.route('/home')
+@auth_bp.route('/home', methods=['GET', 'POST'])
 def home():
     id_asesor = session.get('user_id')  # Suponiendo que el ID del asesor se guarda en la sesión
     if not id_asesor:
         return redirect(url_for('auth.login_view'))  # Redirige si no hay sesión iniciada
+    clientes = []
+    if request.method == 'POST':
+        termino = request.form['termino']
+        ref = db.reference('clientes')
+        clientes_data = ref.order_by_child('nombre').start_at(termino).end_at(termino + "\uf8ff").get()
+        print(f'{clientes_data}')
+        prestamos_ref = db.reference('prestamos').get()
+        movimientos_ref = db.reference('movimientos').get()
+        if ref.get() is None:
+            ref.set({})
+        for cliente_id, data in clientes_data.items():
+            totalPrestamos = 0
+            pretamosActivos = 0 
+            cMulta = 0
+            if prestamos_ref:
+                
+                for prestamo_id, prestamo_data in prestamos_ref.items():
+                    semanasPagadas = 0
+                    if prestamo_data.get('cliente_id') == cliente_id:
+                        if movimientos_ref:
+                            for movimiento_id, movimiento_data in movimientos_ref.items():
+                                semanasPagadas = semanasPagadas +1
+                                if movimiento_data.get('prestamo_id') == prestamo_id:  # Filtrar por prestamo_id
+                                    if movimiento_data.get('BitMulta') == True:  # Filtrar por prestamo_id
+                                        cMulta = cMulta +1
+                        totalPrestamos = totalPrestamos + 1 
+                        if prestamo_data.get('estado') != 'Pagado':
+                            pretamosActivos = pretamosActivos+1
+             # Agrega el ID del cliente al objeto
+            CalificacionCliente=''
+            CalifBuena = float( totalPrestamos * 2)
+            CalifRegular = float(  totalPrestamos * 3)
+            CalifMala =float(  totalPrestamos * 4)
+            CalifGenerada = 0
+            if totalPrestamos > 0  and cMulta >0:
+                CalifGenerada = cMulta /  totalPrestamos
+            if CalifGenerada <= CalifBuena and CalifGenerada >0:
+                CalificacionCliente = 'Bueno'
+            elif CalifGenerada <= CalifRegular and CalifGenerada >0:
+                CalificacionCliente = 'Regular'
+            elif CalifGenerada <= CalifMala and CalifGenerada >0:
+                CalificacionCliente = 'Malo'
+            else:
+                CalificacionCliente = 'Sin Calificación'
 
-    clientes = obtener_clientes(id_asesor)  # Obtiene la lista de clientes
+
+            clientes.append({
+                'id':cliente_id,
+                'nombre' : data['nombre'],
+                'direccion' : data['direccion'],
+                'telefono' : data['telefono'],
+                'id_asesor' : data['id_asesor'],
+                'totalPrestamos' : totalPrestamos,
+                'pretamosActivos' : pretamosActivos,
+                'cMulta' : cMulta,
+                'calificacionCliente' : CalificacionCliente,
+
+            })  # Obtiene la lista de clientes
     return render_template('home.html', clientes=clientes)
 
 @auth_bp.route('/add_cliente', methods=['GET', 'POST'])
@@ -155,7 +211,6 @@ def historial_cliente():
                         sumaGeneralC = totalPrestamo + sumaGeneralC
                         sumaGeneralI = totalPagar + sumaGeneralI 
                         numero = numero +1
-                        print(f'SUMAGENERAC ----------------{sumaGeneralC}')
                         if prestamo_data.get('cliente_id') == cliente_id:  # Filtrar por el cliente_id
                             prestamos.append({
                                 'id': prestamo_id,
@@ -175,7 +230,7 @@ def historial_cliente():
             'semanas': 0,
         })
 
-        print(f'Totales---------------{total}')
+
 
     clientes = obtener_clientes(id_asesor)  # Obtiene la lista de clientes
     return render_template('historial_cliente.html', clientes=clientes, prestamos = prestamos, totales = total)
