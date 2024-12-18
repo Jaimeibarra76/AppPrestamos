@@ -11,9 +11,10 @@ prestamos_bp = Blueprint('prestamos', __name__)
 @prestamos_bp.route('/ver_prestamos')
 def ver_prestamos():
     # Obtener la lista de préstamos de Firebase
-    prestamos_ref = db.reference('prestamos').get()
-    clientes_ref = db.reference('clientes').get()  # Obtener la lista de clientes
-    movimientos_ref = db.reference('movimientos').get()
+    prestamos_ref = db.reference('prestamos').order_by_child('cliente_id').get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    clientes_ref = db.reference('clientes').order_by_child('id_asesor').get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    movimientos_ref = db.reference('movimientos').order_by_child('prestamo_id').get()
+    catalogo_semanas_ref = db.reference('catalogo_semanas').get()
     # Crear un diccionario con las claves de clientes mapeadas a sus nombres
     clientes = {cliente_key: cliente_data['nombre'] for cliente_key, cliente_data in clientes_ref.items()}
 
@@ -22,35 +23,34 @@ def ver_prestamos():
 
     if prestamos_ref:
         for prestamo_id, prestamo_data in prestamos_ref.items():
-            # Usar el cliente_id para buscar su nombre
+            cliente_id = prestamo_data.get('cliente_id')
+            cliente_nombre = clientes.get(cliente_id, 'Desconocido')  # Obtén el nombre del cliente de los datos precargados
+            
             semanas_id = prestamo_data.get('semanas_id', 0)
-            catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
-            multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
-            semanas = (catalogo_semanas['semanas'] if catalogo_semanas else 0)
-            movimiento = []
+            catalogo_semanas = catalogo_semanas_ref.get(semanas_id, {})
+            multa_semanas = float(catalogo_semanas.get('multa', 0))
+            semanas = catalogo_semanas.get('semanas', 0)
+
+            movimiento = []  # Para almacenar los movimientos asociados
             totalMultas = 0
             semanasPagadas = 0
             totalPagado = 0
-            cliente_nombre = clientes.get(prestamo_data.get('cliente_id', ''), 'Desconocido') 
+
+            # Filtramos los movimientos solo para el préstamo actual
             if movimientos_ref:
                 for movimiento_id, movimiento_data in movimientos_ref.items():
-                    
-                    if movimiento_data.get('prestamo_id') == prestamo_id: 
-                        semanasPagadas = semanasPagadas +1 
-
-                        # Filtrar por prestamo_id
-                        if movimiento_data.get('BitMulta') == True:  # Filtrar por prestamo_id
+                    if movimiento_data.get('prestamo_id') == prestamo_id:
+                        semanasPagadas += 1  # Sumar las semanas pagadas
+                        if movimiento_data.get('BitMulta') == True:  # Si tiene multa
                             movimiento.append({
                                 'id': movimiento_id
                             })
-
-                            totalMultas = totalMultas + multa_semanas
-                            totalPagado = totalPagado + float(movimiento_data.get('monto',0)) - multa_semanas
+                            totalMultas += multa_semanas  # Acumular la multa
+                            totalPagado += float(movimiento_data.get('monto', 0)) - multa_semanas  # Resta de multa al total pagado
                         else:
-                            totalPagado = totalPagado + float(movimiento_data.get('monto',0)) 
-                            
-            
-             # Asegúrate de que 'cliente_id' coincide con la clave en tu estructura de datos
+                            totalPagado += float(movimiento_data.get('monto', 0))  # Si no tiene multa, acumula el monto
+
+            # Agregar los datos procesados del préstamo a la lista
             prestamos.append({
                 'id': prestamo_id,
                 'cliente': cliente_nombre,
@@ -58,11 +58,10 @@ def ver_prestamos():
                 'montoCMulta': prestamo_data.get('montoCMulta', 0),
                 'semanas': semanas,
                 'estado': prestamo_data.get('estado', 'Desconocido'),
-                'CMulta': len(movimiento),
+                'CMulta': len(movimiento),  # Número de movimientos con multa
                 'TotalMulta': totalMultas,
-
-                'SemanasPagadas':semanasPagadas,
-                "totalPagado":totalPagado
+                'SemanasPagadas': semanasPagadas,
+                'totalPagado': totalPagado
             })
 
     return render_template('ver_prestamos.html', prestamos=prestamos)
@@ -113,10 +112,10 @@ def agregar_prestamo():
 @prestamos_bp.route('/ver_prestamos_cliente/<cliente_id>')
 def ver_prestamos_cliente(cliente_id):
     # Obtener la lista de préstamos de Firebase
-    prestamos_ref = db.reference('prestamos').get()
-    movimientos_ref = db.reference('movimientos').get()
+    prestamos_ref = db.reference('prestamos').order_by_child('cliente_id').get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    clientes_ref = db.reference('clientes').order_by_child('id_asesor').get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    movimientos_ref = db.reference('movimientos').order_by_child('prestamo_id').get()
     cliente_ref = db.reference('clientes').child(cliente_id).get()
-    clientes_ref = db.reference('clientes').get() 
     clientes = {cliente_key: cliente_data['nombre'] for cliente_key, cliente_data in clientes_ref.items()}
     cliente_nombre = cliente_ref.get('nombre')
 

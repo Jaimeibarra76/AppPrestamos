@@ -126,9 +126,10 @@ def eliminar_cliente(cliente_id):
 @auth_bp.route('/historial_cliente')
 def historial_cliente():
     id_asesor = session.get('user_id')
-    prestamos_ref = db.reference('prestamos').get()  # Suponiendo que el ID del asesor se guarda en la sesión
-    clientes_ref = db.reference('clientes').get()  # Suponiendo que el ID del asesor se guarda en la sesión
-    movimientos_ref = db.reference('movimientos').get()
+    prestamos_ref = db.reference('prestamos').order_by_child('cliente_id').get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    clientes_ref = db.reference('clientes').order_by_child('id_asesor').equal_to(id_asesor).get()  # Suponiendo que el ID del asesor se guarda en la sesión
+    movimientos_ref = db.reference('movimientos').order_by_child('prestamo_id').get()
+    catalogo_semanas_ref = db.reference('catalogo_semanas').get()
     if not id_asesor:
         return redirect(url_for('auth.login_view')) 
     prestamos = []
@@ -138,36 +139,43 @@ def historial_cliente():
     numero =0
     if clientes_ref:
         for cliente_id, cliente_data in clientes_ref.items():
-            cliente_ref = db.reference('clientes').child(cliente_id).get()
-            cliente_nombre = cliente_ref.get('nombre')
-            if prestamos_ref:
-                for prestamo_id, prestamo_data in prestamos_ref.items():
-                    totalPagado =0
-                    if movimientos_ref:
-                        for movimiento_id, movimiento_data in movimientos_ref.items():
-                             if movimiento_data.get('prestamo_id') == prestamo_id: 
-                                 totalPagado = totalPagado + float(movimiento_data.get('monto',0))
-                    semanas_id = prestamo_data.get('semanas_id', 0)
-                    catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
-                    multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
-                    semanas = (catalogo_semanas['semanas'] if catalogo_semanas else 0)
-                    totalPrestamo =  float(prestamo_data.get('monto'))
-                    totalPagar =  semanas * float(prestamo_data.get('pagoxSemana')) - totalPagado
-                    if prestamo_data.get('cliente_id') == cliente_id:
-                        sumaGeneralC = totalPrestamo + sumaGeneralC
-                        sumaGeneralI = totalPagar + sumaGeneralI 
-                        numero = numero +1
-                        if prestamo_data.get('cliente_id') == cliente_id:  # Filtrar por el cliente_id
-                            prestamos.append({
-                                'id': prestamo_id,
-                                'cliente': cliente_nombre,
-                                "totalPrestamo":totalPrestamo,
-                                "totalPagar":totalPagar,
-                                "semanas":semanas,
-                                'numero':numero
-                            })
-                        # Redirige si no hay sesión iniciada
+            cliente_nombre = cliente_data.get('nombre')
 
+            # Filtramos los préstamos de este cliente directamente
+            cliente_prestamos = [prestamo for prestamo in prestamos_ref.values() if prestamo.get('cliente_id') == cliente_id]
+
+            for prestamo_data in cliente_prestamos:
+                totalPagado = 0
+                # Filtrar los movimientos relevantes para este préstamo
+                cliente_movimientos = [movimiento for movimiento in movimientos_ref.values() if movimiento.get('prestamo_id') == prestamo_data.get('id')]
+
+                for movimiento_data in cliente_movimientos:
+                    totalPagado += float(movimiento_data.get('monto', 0))
+
+                semanas_id = prestamo_data.get('semanas_id', 0)
+                catalogo_semanas = catalogo_semanas_ref.get(semanas_id) if semanas_id else None
+                multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
+                semanas = catalogo_semanas.get('semanas', 0) if catalogo_semanas else 0
+
+                totalPrestamo = float(prestamo_data.get('monto'))
+                totalPagar = semanas * float(prestamo_data.get('pagoxSemana')) - totalPagado
+
+                # Acumular los valores generales
+                sumaGeneralC += totalPrestamo
+                sumaGeneralI += totalPagar
+                numero += 1
+
+                # Agregar los datos del préstamo a la lista
+                prestamos.append({
+                    'id': prestamo_data.get('id'),
+                    'cliente': cliente_nombre,
+                    'totalPrestamo': totalPrestamo,
+                    'totalPagar': totalPagar,
+                    'semanas': semanas,
+                    'numero': numero
+                })
+
+    # Agregar la fila total
         total.append({
             'Id':0,
             'cliente':'Total',
