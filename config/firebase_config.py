@@ -26,67 +26,68 @@ def obtener_clientes(id_asesor):
     if ref.get() is None:
         ref.set({})
 
+    # Realizamos las consultas específicas desde Firebase para limitar los datos que se obtienen
     clientes_data = ref.order_by_child('id_asesor').equal_to(id_asesor).get()
+    prestamos_data = db.reference('prestamos').order_by_child('cliente_id').get()
+    movimientos_data = db.reference('movimientos').order_by_child('prestamo_id').get()
 
     clientes = []
     if clientes_data:
-        
         for cliente_id, data in clientes_data.items():
             totalPrestamos = 0
-            pretamosActivos = 0 
+            prestamosActivos = 0
             cMulta = 0
-            if prestamos_ref:
+            
+            # Filtrar solo los préstamos del cliente actual
+            cliente_prestamos = [p for p in prestamos_data.values() if p.get('cliente_id') == cliente_id]
+            
+            for prestamo_data in cliente_prestamos:
+                semanasPagadas = 0
                 
-                for prestamo_id, prestamo_data in prestamos_ref.items():
-                    semanas_id = prestamo_data.get('semanas_id', 0)
-                    catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
-                    multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
-                    totalMultas = 0
-                    semanasPagadas = 0
-                    
-                    
-                    if prestamo_data.get('cliente_id') == cliente_id:
-                        if movimientos_ref:
-                            for movimiento_id, movimiento_data in movimientos_ref.items():
-                                semanasPagadas = semanasPagadas +1
-                                if movimiento_data.get('prestamo_id') == prestamo_id:  # Filtrar por prestamo_id
-                                    if movimiento_data.get('BitMulta') == True:  # Filtrar por prestamo_id
-                                        totalMultas = totalMultas + multa_semanas
-                                        cMulta = cMulta +1
-                        totalPrestamos = totalPrestamos + 1 
-                        if prestamo_data.get('estado') != 'Pagado':
-                            pretamosActivos = pretamosActivos+1
-             # Agrega el ID del cliente al objeto
-            CalificacionCliente=''
-            CalifBuena = float( totalPrestamos * 2)
-            CalifRegular = float(  totalPrestamos * 3)
-            CalifMala =float(  totalPrestamos * 4)
+                # Filtrar los movimientos que corresponden a este préstamo
+                cliente_movimientos = [m for m in movimientos_data.values() if m.get('prestamo_id') == prestamo_data.get('id')]
+                
+                for movimiento_data in cliente_movimientos:
+                    semanasPagadas += 1
+                    if movimiento_data.get('BitMulta') == True:
+                        cMulta += 1
+                
+                totalPrestamos += 1
+                if prestamo_data.get('estado') != 'Pagado':
+                    prestamosActivos += 1
+
+            # Calificación del cliente basada en el total de préstamos y multas
+            CalificacionCliente = ''
+            CalifBuena = float(totalPrestamos * 2)
+            CalifRegular = float(totalPrestamos * 3)
+            CalifMala = float(totalPrestamos * 4)
             CalifGenerada = 0
-            if totalPrestamos > 0  and cMulta >0:
-                CalifGenerada = cMulta /  totalPrestamos
-            if CalifGenerada <= CalifBuena and CalifGenerada >0:
+            if totalPrestamos > 0 and cMulta > 0:
+                CalifGenerada = cMulta / totalPrestamos
+            
+            # Asignar la calificación
+            if CalifGenerada <= CalifBuena and CalifGenerada > 0:
                 CalificacionCliente = 'Bueno'
-            elif CalifGenerada <= CalifRegular and CalifGenerada >0:
+            elif CalifGenerada <= CalifRegular and CalifGenerada > 0:
                 CalificacionCliente = 'Regular'
-            elif CalifGenerada <= CalifMala and CalifGenerada >0:
+            elif CalifGenerada <= CalifMala and CalifGenerada > 0:
                 CalificacionCliente = 'Malo'
             else:
                 CalificacionCliente = 'Sin Calificación'
 
-
+            # Agregar los datos del cliente a la lista
             clientes.append({
-                'id':cliente_id,
-                'nombre' : data['nombre'],
-                'direccion' : data['direccion'],
-                'telefono' : data['telefono'],
-                'id_asesor' : data['id_asesor'],
-                'totalPrestamos' : totalPrestamos,
-                'pretamosActivos' : pretamosActivos,
-                'cMulta' : cMulta,
-                'calificacionCliente' : CalificacionCliente,
-
+                'id': cliente_id,
+                'nombre': data['nombre'],
+                'direccion': data['direccion'],
+                'telefono': data['telefono'],
+                'id_asesor': data['id_asesor'],
+                'totalPrestamos': totalPrestamos,
+                'prestamosActivos': prestamosActivos,
+                'cMulta': cMulta,
+                'calificacionCliente': CalificacionCliente,
             })
-    
+        
     return clientes
 
 

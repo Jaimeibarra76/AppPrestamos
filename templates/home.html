@@ -66,12 +66,9 @@
             <h2>Clientes</h2>
             <a  class="btn btn-success mt-3 ml-auto"  href="{{ url_for('auth.add_cliente') }}" title="Agregar Cliente"><i class="fas fa-plus"> </i></a>
         </div>
-        <form method="post" class="mb-4">
-            <div class="input-group">
-                <input type="text" name="termino" class="form-control" placeholder="Ingresa el nombre del cliente" required>
-                <button type="submit" class="btn btn-primary">Buscar</button>
-            </div>
-        </form>
+        <div class="mb-3 lefc mt-2">
+            <input type="text" id="buscador" class="form-control" placeholder="Buscar cliente..." onkeyup="filtrarClientes()">
+        </div>
         <div class="table-responsive able-responsive-sm">
             <table class="table mt-3 table-bordered table-striped">
                 <thead class="thead-light">
