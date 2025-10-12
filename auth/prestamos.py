@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
 from firebase_admin import db
 
 from datetime import datetime, timedelta
@@ -170,6 +170,10 @@ def ver_movimientos(prestamo_id):
     prestamo_ref = db.reference(f'prestamos/{prestamo_id}')
     prestamo_data = prestamo_ref.get() or {}
 
+    cliente_id = prestamo_data.get('cliente_id')
+    cliente_ref = db.reference('clientes').child(cliente_id).get()
+    cliente_nombre = cliente_ref.get('nombre')
+
     # Guardar semanas y cantidad en variables con valores predeterminados si no existen
     cantidad = float(prestamo_data.get('monto'))
     cantidadPagar = float(prestamo_data.get('monto')) * float(prestamo_data.get('pagoxSemana'))
@@ -219,6 +223,21 @@ def ver_movimientos(prestamo_id):
                     multaTotal = multaTotal + multa_semanas
                 totalCMulta = TotalPMulta + multaTotal
                 totalPen =  totalPen - float(movimiento_data.get('monto', 0)) + aplicaMulta
+                fecha_raw = movimiento_data.get('fechaPago', None )
+                if fecha_raw:  # Solo entra si tiene valor y no es None o vacío
+                    if isinstance(fecha_raw, str):
+                        try:
+                            # Si viene en formato ISO (por ejemplo "2025-10-11T00:00:00")
+                            fecha_convertida = datetime.fromisoformat(fecha_raw)
+                        except ValueError:
+                            try:
+                                # Si viene en formato "YYYY-MM-DD"
+                                fecha_convertida = datetime.strptime(fecha_raw, '%Y-%m-%d')
+                            except ValueError:
+                                # Si no coincide con ningún formato, deja la fecha como None
+                                fecha_convertida = None
+                else:
+                    fecha_convertida = None
                   # Filtrar por prestamo_id
                 movimientos.append({
                     'id': movimiento_id,
@@ -228,6 +247,7 @@ def ver_movimientos(prestamo_id):
                     'totalPen': totalPen,
                     'totalCMulta': float(totalCMulta),
                     'semana': movimiento_data.get('semana', 0),
+                    'fechaPago': fecha_convertida,     
                     'BitMulta' : bool(movimiento_data.get('BitMulta')) 
                 })
 
@@ -235,7 +255,7 @@ def ver_movimientos(prestamo_id):
 
     return render_template('ver_movimientos.html', movimientos=movimientos, prestamo_id=prestamo_id, prestamo=prestamo_ref, Cantidad = cantidad, 
                            Semanas=cantidad_semanas,es_lunes= es_lunes, fecha_inicio = fecha_inicio_formateada, fecha_termino = fecha_termino_formateada,
-                           multa_semanas=multa_semanas,cantidadCmulta = cantidadCmulta, estado= estado, PagoxSemana=pagoxSemana, CantidadPagar=cantidadPagar )
+                           multa_semanas=multa_semanas,cantidadCmulta = cantidadCmulta, estado= estado, PagoxSemana=pagoxSemana, CantidadPagar=cantidadPagar ,cliente_nombre=cliente_nombre)
 
 @prestamos_bp.route('/agregar_pago/<prestamo_id>', methods=['GET', 'POST'])
 def agregar_pago(prestamo_id):
@@ -248,6 +268,7 @@ def agregar_pago(prestamo_id):
          #float(prestamo_data.get('monto', 0))
         pagoxSemana = float(prestamo_data.get('pagoxSemana', 0))
         aplicarMulta = request.form.get('aplicar_Multa')
+        fechaPago = request.form.get('fechaPago')
         catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
         multa_semanas = float(catalogo_semanas['multa'] if catalogo_semanas else 0)
         semanas = int(catalogo_semanas['semanas'])
@@ -318,6 +339,7 @@ def agregar_pago(prestamo_id):
                 'prestamo_id': prestamo_id,
                 'monto': monto2,
                 'semana': semana,
+                'fechaPago': fechaPago,
                 "BitMulta" : bitMulta
             })
             if(semana == semanas):
@@ -377,6 +399,7 @@ def eliminar_prestamo(prestamo_id):
 
 @prestamos_bp.route('/eliminar_movimiento/<movimiento_id>,<prestamo_id>', methods=['GET'])
 def eliminar_movimiento(movimiento_id, prestamo_id):
+
     # Eliminar el cliente con el ID proporcionado
     try:
         # Obtener la referencia al cliente específico en la base de datos
@@ -390,3 +413,4 @@ def eliminar_movimiento(movimiento_id, prestamo_id):
         flash(f'Error al eliminar el cliente: {str(e)}', 'danger')
     
     return redirect(url_for('prestamos.ver_movimientos', prestamo_id=prestamo_id))
+

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Movimientos del Préstamo</title>
+</head>
+<body>
+  <h1>Movimientos del Préstamo</h1>
+
+  <div class="info">
+    <p><strong>Solicitante:</strong> {{ prestamo.solicitante }}</p>
+    <p><strong>Total Préstamo:</strong> ${{ '{:,.2f}'.format(prestamo.totalPrestamo) }}</p>
+    <p><strong>Total a Pagar:</strong> ${{ '{:,.2f}'.format(prestamo.totalPagar) }}</p>
+    <p><strong>Semanas Totales:</strong> {{ prestamo.semanasTotales }}</p>
+    <p><strong>Fecha Inicio:</strong> {{ prestamo.fechaInicio }}</p>
+    <p><strong>Fecha Término:</strong> {{ prestamo.fechaTermino }}</p>
+    <p class="text-right"><em>Generado el {{ fecha_actual }}</em></p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Semana</th>
+        <th>Fecha de Pago</th>
+        <th>Pago</th>
+        <th>Multa</th>
+        <th>Pago con Multa</th>
+        <th>Saldo préstamo</th>
+        <th>Saldo con Multa</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if movimientos %}
+        {% for m in movimientos %}
+        <tr>
+          <td>{{ m.semana }}</td>
+          <td>{{ m.fechaPago.strftime('%d/%m/%Y') if m.fechaPago else 'Sin fecha' }}</td>
+          <td>${{ '{:,.2f}'.format(m.monto) }}</td>
+          <td>${{ '{:,.2f}'.format(m.multa) }}</td>
+          <td>${{ '{:,.2f}'.format(m.montoCmulta) }}</td>
+          <td>${{ '{:,.2f}'.format(m.totalPen) }}</td>
+          <td>${{ '{:,.2f}'.format(m.totalCMulta) }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="7">No hay movimientos registrados.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</body>
+</html>

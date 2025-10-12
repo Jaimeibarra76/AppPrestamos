@@ -6,6 +6,7 @@
     <title>Movimientos de Préstamo</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
 </head>
 <body>
     <!-- Menú Superior -->
@@ -54,10 +55,11 @@
 
 
     <!-- Contenido Principal -->
-    <div class="container mt-5">
+    <div class="container mt-5" id="containertabla">
         <h2 class="mb-4">Movimientos del Préstamo</h2>
         <div class="card mb-4">
             <div class="card-body">
+                <p><strong>Solicitante:</strong> {{ cliente_nombre}}</p>
                 <p><strong>Total Prestamo:</strong> ${{ Cantidad}}</p>
                 <p><strong>Total a Pagar:</strong> ${{ CantidadPagar}}</p>
                 <!-- <p><strong>Total Prestamo con Multas:</strong> ${{ cantidadCmulta}}</p> -->
@@ -71,17 +73,21 @@
                 {%endif%}
             </div>
         </div>
+        <div class="d-flex justify-content-between">
+           <button id="btnDescargarPDF" class="btn btn-primary">Descargar PDF</button>
+        </div>
         <div class="table-responsive able-responsive-sm">
-            <table class="table table-bordered table-striped">
+            <table class="table table-bordered table-striped"  id="tabla-movimientos">
                 <thead class="thead-light">
                     <tr>
                         <th>Semana</th>
+                        <th>Fecha de Pago</th>
                         <th>Pago</th>
                         <th>Multa</th>
                         <th>Pago con Multa</th>
                         <th>Saldo prestamo</th>
                         <th>Saldo Con multa</th>
-                        <th>Acciones</th>
+                        <th class="no-pdf">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -89,12 +95,17 @@
                         {% for movimiento in movimientos %}
                         <tr>
                             <td >{{ movimiento.semana }}</td>
+                            <td >{% if movimiento.fechaPago %}
+                                {{ movimiento.fechaPago.strftime('%d/%m/%Y') }}
+                              {% else %}
+                                Sin fecha
+                              {% endif %}  </td>
                             <td >${{ '{:,.2f}'.format(movimiento.monto) }}</td>
                             <td class="{% if  movimiento.BitMulta %}bg-danger {% else %}bg-success{% endif %} text-white">${{ '{:,.2f}'.format(movimiento.multa) }}</td>
                             <td >${{ '{:,.2f}'.format(movimiento.montoCmulta) }}</td>
                             <td >${{ '{:,.2f}'.format(movimiento.totalPen) }}</td>
                             <td >${{ '{:,.2f}'.format(movimiento.totalCMulta) }}</td>
-                            <td>
+                            <td class="no-pdf">
                                 <a href="{{ url_for('prestamos.eliminar_movimiento', movimiento_id=movimiento.id , prestamo_id=prestamo_id) }}" class="btn btn-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
                                 
                             </td>
@@ -134,7 +145,7 @@
                             <!-- <a href="javascript:void(0);" class="btn" title="Editar" onclick="habilitarInput()">
                                 <i class="fas fa-edit"></i>
                             </a> -->
-                            <input type="number" class="form-control" id="monto" name="monto" step="0.01" required value="{{PagoxSemana}}" disabled="true">
+                            <input type="number" class="form-control" id="monto" name="monto" step="0.01" required value="{{PagoxSemana}}" >
                         </div>
                         {% if not es_lunes %}
                             <div class="mb-3">
@@ -149,6 +160,10 @@
                             </div>                        
                             
                         {% endif %}
+                        <div class="form-group">
+                            <label for="fecha" class="form-label">Fecha Pago:</label>
+                            <input type="date" id="fecha" name="fechaPago" class="form-control">
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="submit" class="btn btn-primary">Registrar Pago</button>
@@ -179,9 +194,52 @@
                 boton.classList.add('btn-primary');
             }         // Opcional: enfocar el input
         }
+
+        document.getElementById('btnDescargarPDF').addEventListener('click', async () => {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            const div = document.getElementById("containertabla");
+            const elemento = document.getElementById('containertabla');
+            const boton = document.getElementById("btnDescargarPDF");
+            boton.style.display = "none";
+
+            const elementosNoPDF = div.querySelectorAll(".no-pdf");
+            elementosNoPDF.forEach(el => el.style.display = "none");
+
+            // Convierte la tabla a imagen
+            const canvas = await html2canvas(elemento, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const imgWidth = 550;
+            const pageHeight = 780;
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 25, position + 20, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 25, position + 20, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            pdf.save('movimientos.pdf');
+            // Volver a mostrar el botón
+            boton.style.display = "block";
+            // Volver a mostrar los elementos ocultos
+            elementosNoPDF.forEach(el => el.style.display = "table-cell"); // table-cell para td
+        });
+
     </script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 </body>
 </html>
