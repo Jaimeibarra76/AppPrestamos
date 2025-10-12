@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
+    
 </head>
 <body>
     <!-- Menú Superior -->
@@ -58,7 +59,7 @@
     <div class="container mt-5" id="containertabla">
         <h2 class="mb-4">Movimientos del Préstamo</h2>
         <div class="card mb-4">
-            <div class="card-body">
+            <div class="card-body" id="infoPrestamo">
                 <p><strong>Solicitante:</strong> {{ cliente_nombre}}</p>
                 <p><strong>Total Prestamo:</strong> ${{ Cantidad}}</p>
                 <p><strong>Total a Pagar:</strong> ${{ CantidadPagar}}</p>
@@ -67,7 +68,7 @@
                 <p><strong>Fecha Inicio:</strong> {{ fecha_inicio }}</p>
                 <p><strong>Fecha Termino:</strong> {{ fecha_termino }}</p>
                 {% if estado != 'Pagado'%}
-                    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#agregarPagoModal">
+                    <button type="button" class="btn btn-success no-pdf" data-toggle="modal" data-target="#agregarPagoModal">
                         Agregar Nuevo Pago
                     </button>
                 {%endif%}
@@ -107,7 +108,17 @@
                             <td >${{ '{:,.2f}'.format(movimiento.totalCMulta) }}</td>
                             <td class="no-pdf">
                                 <a href="{{ url_for('prestamos.eliminar_movimiento', movimiento_id=movimiento.id , prestamo_id=prestamo_id) }}" class="btn btn-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
-                                
+                                <button class="btn btn-primary btn-imprimir" 
+                                        data-semana="{{ movimiento.semana }}"
+                                        data-fechapago="{% if movimiento.fechaPago %}{{ movimiento.fechaPago.strftime('%d/%m/%Y') }}{% else %}Sin fecha{% endif %}"
+                                        data-pago="{{ '{:,.2f}'.format(movimiento.monto) }}"
+                                        data-multa="{{ '{:,.2f}'.format(movimiento.multa) }}"
+                                        data-pagomulta="{{ '{:,.2f}'.format(movimiento.montoCmulta) }}"
+                                        data-saldoprestamo="{{ '{:,.2f}'.format(movimiento.totalPen) }}"
+                                        data-saldomulta="{{ '{:,.2f}'.format(movimiento.totalCMulta) }}"
+                                        title="Imprimir Ticket">
+                                    <i class="fas fa-print"></i>
+                                </button>
                             </td>
                             
                             
@@ -127,7 +138,56 @@
         
         
     </div>
+    <div id="ticket-template" style="display:none; width:300px; font-family: Arial, Helvetica, sans-serif;">
+        <div class="ticket" style="padding:12px; box-sizing:border-box; width:100%;">
+            <div class="logo" style="text-align:center; margin-bottom:6px;">
+            <!-- Si tienes logo, pon aquí un <img> con style="max-width:120px" -->
+            <strong style="font-size:16px;">NOMBRE DE MI TIENDA</strong><br>
+            <small>RFC · Dirección · Tel: 55-5555-5555</small>
+            </div>
 
+            <hr style="border:none; border-top:1px dashed #333; margin:8px 0;">
+
+            <div style="text-align:center; margin-bottom:6px;">
+            <strong style="font-size:13px;">Comprobante de Pago</strong><br>
+            <small id="ticket-fecha-emision">01/01/2025 12:00</small>
+            </div>
+
+            <div style="margin:6px 0; font-size:12px;">
+            <div style="display:flex; justify-content:space-between;">
+                <div>Semana:</div><div id="ticket-semana">1</div>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <div>Fecha de Pago:</div><div id="ticket-fechaPago">01/01/2025</div>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <div>Pago:</div><div id="ticket-pago">$0.00</div>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <div>Multa:</div><div id="ticket-multa">$0.00</div>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <div>Pago c/ Multa:</div><div id="ticket-pagomulta">$0.00</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:6px; font-weight:700;">
+                <div>Saldo:</div><div id="ticket-saldo">$0.00</div>
+            </div>
+            </div>
+
+            <hr style="border:none; border-top:1px dashed #333; margin:8px 0;">
+
+            <div style="font-size:11px; text-align:center; margin-bottom:6px;">
+            <div>Lugar: <span id="ticket-lugar">San Felipe Gto.</span></div>
+            <div>Atendido por: <span id="ticket-asesor">Asesor</span></div>
+            </div>
+
+            <div style="margin-top:8px; font-size:10px; text-align:center;">
+            <div>Gracias por su pago</div>
+            <div style="margin-top:6px;">________________________</div>
+            <div style="font-size:9px;">Firma</div>
+            </div>
+        </div>
+        </div>
     <!-- Modal para Agregar Pago -->
     <div class="modal fade" id="agregarPagoModal" tabindex="-1" role="dialog" aria-labelledby="agregarPagoModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -162,6 +222,8 @@
                         {% endif %}
                         <div class="form-group">
                             <label for="fecha" class="form-label">Fecha Pago:</label>
+                            <label id="Solicitante" for="Solicitante" class="form-label">{{ cliente_nombre}}</label>
+                            <label id="TotalPrestamo" for="TotalPrestamo" class="form-label">${{ CantidadPagar}}</label>
                             <input type="date" id="fecha" name="fechaPago" class="form-control">
                         </div>
                     </div>
@@ -195,44 +257,154 @@
             }         // Opcional: enfocar el input
         }
 
-        document.getElementById('btnDescargarPDF').addEventListener('click', async () => {
+       document.getElementById('btnDescargarPDF').addEventListener('click', () => {
+             const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            let y = 20; // posición vertical inicial
+
+            // --- Información del préstamo ---
+            const infoDiv = document.getElementById('infoPrestamo');
+            infoDiv.querySelectorAll('p').forEach(p => {
+                doc.setFontSize(10);
+                doc.text(p.innerText, 14, y);
+                y += 7; // espacio entre líneas
+            });
+
+            y += 5; // un poco de espacio antes de la tabla
+
+            // --- Tabla de movimientos ---
+            const table = document.getElementById('tabla-movimientos');
+            const headers = [];
+            const data = [];
+
+            // Cabecera
+            table.querySelectorAll('thead th').forEach(th => {
+                if (!th.classList.contains('no-pdf')) headers.push(th.innerText);
+            });
+
+            // Filas
+            table.querySelectorAll('tbody tr').forEach(tr => {
+                const row = [];
+                tr.querySelectorAll('td').forEach(td => {
+                if (!td.classList.contains('no-pdf')) row.push(td.innerText);
+                });
+                data.push(row);
+            });
+
+            doc.autoTable({
+                startY: y,
+                head: [headers],
+                body: data,
+                theme: 'grid',
+                styles: { fontSize: 10 },
+                headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+                margin: { left: 14, right: 14 }
+            });
+
+            const url = doc.output('bloburl');
+            window.open(url, '_blank');
+            });
+
+       document.addEventListener('click', function(e){
+            const btn = e.target.closest('.btn-imprimir');
+            if (!btn) return;
+
+            const Solicitante= document.getElementById('Solicitante').textContent;
+            const TotalPrestamo= document.getElementById('TotalPrestamo').textContent;
+
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'pt', 'a4');
-            const div = document.getElementById("containertabla");
-            const elemento = document.getElementById('containertabla');
-            const boton = document.getElementById("btnDescargarPDF");
-            boton.style.display = "none";
+            const doc = new jsPDF({
+                unit: 'mm',
+                format: [80, 200] // ancho típico de ticket 80mm, alto inicial 200mm
+            });
 
-            const elementosNoPDF = div.querySelectorAll(".no-pdf");
-            elementosNoPDF.forEach(el => el.style.display = "none");
+            // Datos del movimiento
+            const semana = btn.getAttribute('data-semana') || '';
+            const fechaPago = btn.getAttribute('data-fechapago') || '';
+            const pago = btn.getAttribute('data-pago') || '0.00';
+            const multa = btn.getAttribute('data-multa') || '0.00';
+            const pagoMulta = btn.getAttribute('data-pagomulta') || '0.00';
+            const saldoPrestamo = btn.getAttribute('data-saldoprestamo') || '0.00';
+            const lugar = 'San Felipe Gto.';
+            const asesor = btn.getAttribute('data-asesor') || 'Asesor';
 
-            // Convierte la tabla a imagen
-            const canvas = await html2canvas(elemento, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            
-            const imgWidth = 550;
-            const pageHeight = 780;
-            const imgHeight = canvas.height * imgWidth / canvas.width;
-            let heightLeft = imgHeight;
-            let position = 0;
+            // Posición vertical inicial
+            let y = 10;
 
-            pdf.addImage(imgData, 'PNG', 25, position + 20, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
+            // --- Encabezado ---
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("PRESTAMO", 40, y, {align: "center"});
+            y += 6;
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.text("RFC · Dirección · Tel: 55-5555-5555", 40, y, {align: "center"});
+            y += 6;
+            doc.setLineWidth(0.3);
+            doc.line(5, y, 75, y); // línea horizontal
+            y += 5;
 
-            while (heightLeft > 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 25, position + 20, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
+            // --- Título ---
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text("COMPROBANTE DE PAGO", 40, y, {align: "center"});
+            y += 6;
 
-            pdf.save('movimientos.pdf');
-            // Volver a mostrar el botón
-            boton.style.display = "block";
-            // Volver a mostrar los elementos ocultos
-            elementosNoPDF.forEach(el => el.style.display = "table-cell"); // table-cell para td
-        });
+            // Fecha de emisión
+            const fechaHoy = new Date().toLocaleString();
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Fecha: ${fechaHoy}`, 5, y);
+            y += 5;
+            doc.text(`Lugar: ${lugar}`, 5, y);
+            y += 6;
+            doc.text(`Cliente: ${Solicitante}`, 5, y);
+            y += 6;
 
+            // --- Datos del movimiento ---
+            doc.setFont("helvetica", "bold");
+            doc.text("Semana", 5, y);
+            doc.text("Fecha Pago", 28, y);
+            doc.text("Pago", 65, y, {align:"right"});
+            y += 4;
+            doc.setLineWidth(0.1);
+            doc.line(5, y, 75, y); // línea separadora
+            y += 5;
+
+            doc.setFont("helvetica", "normal");
+            doc.text(`${semana}`, 5, y);
+            doc.text(`${fechaPago}`, 28, y);
+            doc.text(`$${pago}`, 67, y, {align:"right"});
+            y += 10;
+            doc.setFont("helvetica", "bold");
+            doc.text(`Saldo: $${saldoPrestamo}`, 5, y);
+            y += 6;
+            doc.text(`Total Prestamo: ${TotalPrestamo}`, 5, y);
+            y += 6;
+            doc.line(5, y, 75, y); // línea separadora
+            y += 6;
+
+            // --- Pie ---
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.text("Atendido por: Martín Cano" , 5, y);
+            y += 8;
+            doc.text("Gracias por su pago", 40, y, {align:"center"});
+            y += 12;
+            doc.line(20, y, 60, y); // línea de firma
+            y += 4;
+            doc.setFontSize(8);
+            doc.text("Firma", 40, y, {align:"center"});
+            y += 6;
+
+            doc.setFontSize(7);
+            doc.text("Información legal o leyenda breve aquí", 40, y, {align:"center"});
+
+            // Abrir PDF en nueva pestaña
+            const url = doc.output('bloburl');
+            window.open(url, '_blank');
+            });  
     </script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
@@ -240,6 +412,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </body>
 </html>
