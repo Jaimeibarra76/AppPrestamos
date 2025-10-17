@@ -267,6 +267,7 @@ def agregar_pago(prestamo_id):
         semanas_id = prestamo_data.get('semanas_id', 0)
          #float(prestamo_data.get('monto', 0))
         pagoxSemana = float(prestamo_data.get('pagoxSemana', 0))
+        pagoxSemana = float(request.form.get('monto', 0))
         aplicarMulta = request.form.get('aplicar_Multa')
         fechaPago = request.form.get('fechaPago')
         catalogo_semanas = db.reference('catalogo_semanas').child(semanas_id).get()
