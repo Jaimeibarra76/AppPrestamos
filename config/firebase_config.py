@@ -3,18 +3,16 @@ from firebase_admin import credentials, db
 import os
 import json
 
-# firebase_config = os.getenv('FIREBASE_CONFIG')
+firebase_config = os.getenv('FIREBASE_CONFIG')
 
-# if not firebase_config:
-#     raise ValueError("La variable de entorno FIREBASE_CONFIG no está configurada.")
+if not firebase_config:
+    raise ValueError("La variable de entorno FIREBASE_CONFIG no está configurada.")
 
-# # Convertir el contenido JSON en un diccionario
-# firebase_config_dict = json.loads(firebase_config)
+# Convertir el contenido JSON en un diccionario
+firebase_config_dict = json.loads(firebase_config)
 
 # Inicializar Firebase con las credenciales
-#cred = credentials.Certificate(firebase_config_dict)
-
-cred = credentials.Certificate("firebase_credentials.json")
+cred = credentials.Certificate(firebase_config_dict)
 
 #cred = credentials.Certificate("firebase_credentials.json")
 firebase_admin.initialize_app(cred, {
